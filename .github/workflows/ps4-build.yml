@@ -9,30 +9,34 @@ on:
       - '.github/workflows/ps4-build.yml'
 
 jobs:
-  prepare-sources:
+  build-duckstation-ps4:
     runs-on: ubuntu-24.04
 
     steps:
-      - name: 1. سحب الكود المصدري لمحاكي DuckStation
+      - name: 1. سحب كود DuckStation والملفات المساعدة
         uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
-      - name: 2. سحب مشروع DolphinPS4 بالكامل
+      - name: 2. سحب سكريبتات الدعم والـ Port الخاصة بالـ PS4
         run: |
           git clone --depth=1 https://github.com/iHaiDeeZ/DolphinPS4.git ${GITHUB_WORKSPACE}/dolphin-ps4-ref
+          mkdir -p ${GITHUB_WORKSPACE}/ps4-build-env
+          cp -r ${GITHUB_WORKSPACE}/dolphin-ps4-ref/port ${GITHUB_WORKSPACE}/ps4-build-env/
+          cp -r ${GITHUB_WORKSPACE}/dolphin-ps4-ref/toolchain ${GITHUB_WORKSPACE}/ps4-build-env/
+          cp -r ${GITHUB_WORKSPACE}/dolphin-ps4-ref/scripts ${GITHUB_WORKSPACE}/ps4-build-env/
+          ls -la ${GITHUB_WORKSPACE}/ps4-build-env/
 
-      - name: 3. نسخ كافة ملفات الإعدادات والسكريبتات إلى مستودعك المحلّي
+      - name: 3. إعداد بيئة ومترجم الـ PS4 (Clang & CMake)
         run: |
-          mkdir -p ${GITHUB_WORKSPACE}/src/duckstation-ps4/ps4-support
-          cp -r ${GITHUB_WORKSPACE}/dolphin-ps4-ref/port ${GITHUB_WORKSPACE}/src/duckstation-ps4/ps4-support/
-          cp -r ${GITHUB_WORKSPACE}/dolphin-ps4-ref/toolchain ${GITHUB_WORKSPACE}/src/duckstation-ps4/ps4-support/
-          cp -r ${GITHUB_WORKSPACE}/dolphin-ps4-ref/scripts ${GITHUB_WORKSPACE}/src/duckstation-ps4/ps4-support/
-          
-          # عرض المجلدات التي تم نسخها بنجاح
-          ls -la ${GITHUB_WORKSPACE}/src/duckstation-ps4/ps4-support/
+          sudo apt-get update
+          sudo apt-get install -y cmake ninja-build clang lld llvm pkg-config wget tar python3
+          echo "Build environment tools installed successfully."
 
-      - name: 4. رفع الملفات كأرتيفاكت للتحميل
-        uses: actions/upload-artifact@v4
-        with:
-          name: PS4-Support-Files
-          path: ${GITHUB_WORKSPACE}/src/duckstation-ps4/ps4-support/
-    
+      - name: 4. فحص هيكل ملفات البناء وبدء توليد الحزمة
+        run: |
+          echo "Preparing CMake configuration for DuckStation PS4 target..."
+          mkdir -p build-ps4
+          cd build-ps4
+          # سيتم ربط الإعدادات هنا مع ملفات الـ toolchain المستخرجة
+          echo "Environment is ready for building DuckStation cores."
