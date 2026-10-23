@@ -2,9 +2,7 @@ add_subdirectory(common)
 add_subdirectory(util)
 add_subdirectory(core)
 add_subdirectory(scmversion)
-# استبدال واجهة الكمبيوتر Qt بواجهة الـ PS4 XMB
-# add_subdirectory(duckstation-qt)
-add_subdirectory(duckstation-ps4)
+add_subdirectory(duckstation-qt)
 
 if(APPLE)
   add_subdirectory(updater)
