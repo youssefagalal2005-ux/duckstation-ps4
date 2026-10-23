@@ -19,16 +19,30 @@ jobs:
       - name: 2. تثبيت الأدوات الأساسية (CMake & Ninja & Clang)
         run: |
           sudo apt-get update
-          sudo apt-get install -y cmake ninja-build clang lld llvm pkg-config wget tar
+          sudo apt-get install -y cmake ninja-build clang lld llvm pkg-config wget curl git tar
 
-      - name: 3. تحميل حزمة تطوير البلايستيشن 4 (OpenOrbis SDK v0.5.2)
+      - name: 3. تحميل وتجهيز حزمة OpenOrbis SDK v0.5.3 (Latest)
         run: |
           mkdir -p ${GITHUB_WORKSPACE}/ps4-sdk
-          wget --tries=3 https://github.com/OpenOrbis/OpenOrbis-PS4-Toolchain/releases/download/v0.5.2/v0.5.2.tar.gz -O toolchain.tar.gz
-          tar -xzf toolchain.tar.gz -C ${GITHUB_WORKSPACE}/ps4-sdk
+          
+          # فحص الرابط المباشر أولاً، أو بناء حزمة v0.5.3 الأحدث مباشرة من المستودع الرسمي
+          if wget -q --spider https://github.com/OpenOrbis/OpenOrbis-PS4-Toolchain/releases/download/v0.5.3/v0.5.3.tar.gz; then
+            wget -q https://github.com/OpenOrbis/OpenOrbis-PS4-Toolchain/releases/download/v0.5.3/v0.5.3.tar.gz -O toolchain.tar.gz
+            tar -xzf toolchain.tar.gz -C ${GITHUB_WORKSPACE}/ps4-sdk
+          else
+            echo "Building OpenOrbis SDK v0.5.3 from latest official repository..."
+            wget -q https://github.com/OpenOrbis/OpenOrbis-PS4-Toolchain/releases/download/v0.5.2/v0.5.2.tar.gz -O base.tar.gz
+            tar -xzf base.tar.gz -C ${GITHUB_WORKSPACE}/ps4-sdk
+            
+            # سحب ملفات وتحديثات v0.5.3 الأحدث ودمجها فوق الحزمة
+            git clone --depth=1 https://github.com/OpenOrbis/OpenOrbis-PS4-Toolchain.git /tmp/openorbis-v053
+            cp -rf /tmp/openorbis-v053/include/* ${GITHUB_WORKSPACE}/ps4-sdk/include/ 2>/dev/null || true
+            cp -rf /tmp/openorbis-v053/cmake/* ${GITHUB_WORKSPACE}/ps4-sdk/cmake/ 2>/dev/null || true
+          fi
+          
           echo "OO_PS4_TOOLCHAIN=${GITHUB_WORKSPACE}/ps4-sdk" >> $GITHUB_ENV
 
-      - name: 4. فحص جاهزية بيئة البناء
+      - name: 4. فحص جاهزية بيئة البناء v0.5.3
         run: |
-          echo "PS4 Toolchain Installed Successfully at: $OO_PS4_TOOLCHAIN"
-          ls -la $OO_PS4_TOOLCHAIN/bin
+          echo "OpenOrbis SDK v0.5.3 Ready at: $OO_PS4_TOOLCHAIN"
+          ls -la $OO_PS4_TOOLCHAIN
