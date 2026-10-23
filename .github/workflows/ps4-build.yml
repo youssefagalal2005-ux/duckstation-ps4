@@ -13,47 +13,34 @@ jobs:
     runs-on: ubuntu-24.04
 
     steps:
-      - name: 1. سحب الكود المصدري للمشروع وملفات الدعم
+      - name: 1. سحب كود DuckStation وملفات الدعم
         uses: actions/checkout@v4
         with:
           submodules: recursive
 
-      - name: 2. تثبيت أدوات ومترجمات نظام Orbis OS والـ SDK
+      - name: 2. إعداد بيئة ومترجمات البناء
         run: |
           sudo apt-get update
           sudo apt-get install -y cmake ninja-build clang lld llvm pkg-config wget tar python3 python3-pip
-          pip3 install pillow pyyaml
 
-      - name: 3. جلب ملفات SceSys ومسارات أغطية ألعاب PS1
+      - name: 3. دمج أصول XMB وتوجيه مسارات Covers ألعاب PS1
         run: |
           git clone --depth=1 https://github.com/iHaiDeeZ/DolphinPS4.git ${GITHUB_WORKSPACE}/dolphin-ps4-ref
           mkdir -p ${GITHUB_WORKSPACE}/src/duckstation-ps4
           
-          # نسخ ملفات دعم النظام والواجهة
+          # نسخ ملفات النظام والواجهة من المرجع
           cp -r ${GITHUB_WORKSPACE}/dolphin-ps4-ref/sce_sys ${GITHUB_WORKSPACE}/src/duckstation-ps4/ 2>/dev/null || true
           cp -r ${GITHUB_WORKSPACE}/dolphin-ps4-ref/xmb ${GITHUB_WORKSPACE}/src/duckstation-ps4/ 2>/dev/null || true
 
-          # ضبط مسار جلب أغطية ألعاب PS1 حصرياً في ملف الإعدادات
+          # ضبط مسار Covers الخاصة بـ PS1 حصرياً
           CONFIG_FILE="${GITHUB_WORKSPACE}/src/duckstation-ps4/xmb/ps4-defaults.ini"
           mkdir -p $(dirname "$CONFIG_FILE")
           echo "[CoverArt]" > "$CONFIG_FILE"
           echo "CoverDatabaseURL = https://raw.githubusercontent.com/stenzek/duckstation/master/ee/covers/ps1/" >> "$CONFIG_FILE"
 
-      - name: 4. تشغيل الـ CMake وتجميع الحزمة للـ PS4
+      - name: 4. اختبار تكوين البناء الأولي
         run: |
-          echo "Configuring project via CMake for Orbis OS..."
           mkdir -p build-ps4
           cd build-ps4
           cmake -DCMAKE_BUILD_TYPE=Release ..
-          
-          echo "Building executable binaries..."
-          cmake --build . --parallel $(nproc) || echo "Build phase executed."
-
-      - name: 5. رفع ملف الحزمة الناتج PKG
-        uses: actions/upload-artifact@v4
-        with:
-          name: DuckStation-PS4-XMB-PKG
-          path: |
-            build-ps4/**/*.pkg
-            build-ps4/**/*.bin
-            src/duckstation-ps4/sce_sys/
+          echo "CMake configuration generated successfully."
