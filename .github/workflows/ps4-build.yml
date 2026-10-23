@@ -18,18 +18,18 @@ jobs:
         with:
           submodules: recursive
 
-      - name: 2. تجهيز أصول وواجهة الـ PS4 وملفات النظام
+      - name: 2. سحب أصول وواجهة الـ PS4 من المرجع الخارجي
         run: |
           git clone --depth=1 https://github.com/iHaiDeeZ/DolphinPS4.git ${GITHUB_WORKSPACE}/dolphin-ps4-ref
-          mkdir -p ${GITHUB_WORKSPACE}/ps4-final-output/duckstation-ps4
+          mkdir -p ${GITHUB_WORKSPACE}/src/duckstation-ps4
           
-          # نسخ ملفات النظام والواجهة بدقة
-          cp -r ${GITHUB_WORKSPACE}/dolphin-ps4-ref/sce_sys ${GITHUB_WORKSPACE}/ps4-final-output/duckstation-ps4/ 2>/dev/null || true
-          cp -r ${GITHUB_WORKSPACE}/dolphin-ps4-ref/xmb ${GITHUB_WORKSPACE}/ps4-final-output/duckstation-ps4/ 2>/dev/null || true
+          # نسخ الملفات مباشرة إلى مجلد الـ src في المستودع
+          cp -r ${GITHUB_WORKSPACE}/dolphin-ps4-ref/sce_sys ${GITHUB_WORKSPACE}/src/duckstation-ps4/ 2>/dev/null || true
+          cp -r ${GITHUB_WORKSPACE}/dolphin-ps4-ref/xmb ${GITHUB_WORKSPACE}/src/duckstation-ps4/ 2>/dev/null || true
 
       - name: 3. ضبط مسار Covers ألعاب PS1 حصرياً
         run: |
-          CONFIG_FILE="${GITHUB_WORKSPACE}/ps4-final-output/duckstation-ps4/xmb/ps4-defaults.ini"
+          CONFIG_FILE="${GITHUB_WORKSPACE}/src/duckstation-ps4/xmb/ps4-defaults.ini"
           mkdir -p $(dirname "$CONFIG_FILE")
           echo "[CoverArt]" > "$CONFIG_FILE"
           echo "CoverDatabaseURL = https://raw.githubusercontent.com/stenzek/duckstation/master/ee/covers/ps1/" >> "$CONFIG_FILE"
@@ -38,4 +38,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: DuckStation-PS4-XMB-Final-Package
-          path: ${GITHUB_WORKSPACE}/ps4-final-output/
+          path: ${GITHUB_WORKSPACE}/src/duckstation-ps4/
