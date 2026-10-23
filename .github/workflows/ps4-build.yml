@@ -9,36 +9,30 @@ on:
       - '.github/workflows/ps4-build.yml'
 
 jobs:
-  extract-and-prepare:
+  prepare-sources:
     runs-on: ubuntu-24.04
 
     steps:
       - name: 1. سحب الكود المصدري لمحاكي DuckStation
         uses: actions/checkout@v4
 
-      - name: 2. سحب مشروع DolphinPS4 لاستخراج الـ XMB وتعريفات Vulkan
+      - name: 2. سحب مشروع DolphinPS4 بالكامل
         run: |
           git clone --depth=1 https://github.com/iHaiDeeZ/DolphinPS4.git ${GITHUB_WORKSPACE}/dolphin-ps4-ref
 
-      - name: 3. استخراج ملفات كود واجهة الـ XMB من الباتش وتحليل هيكلها
+      - name: 3. نسخ كافة ملفات الإعدادات والسكريبتات إلى مستودعك المحلّي
         run: |
-          mkdir -p ${GITHUB_WORKSPACE}/extracted-xmb
-          cd ${GITHUB_WORKSPACE}/dolphin-ps4-ref
+          mkdir -p ${GITHUB_WORKSPACE}/src/duckstation-ps4/ps4-support
+          cp -r ${GITHUB_WORKSPACE}/dolphin-ps4-ref/port ${GITHUB_WORKSPACE}/src/duckstation-ps4/ps4-support/
+          cp -r ${GITHUB_WORKSPACE}/dolphin-ps4-ref/toolchain ${GITHUB_WORKSPACE}/src/duckstation-ps4/ps4-support/
+          cp -r ${GITHUB_WORKSPACE}/dolphin-ps4-ref/scripts ${GITHUB_WORKSPACE}/src/duckstation-ps4/ps4-support/
           
-          # عرض قائمة بجميع ملفات الكود الجديدة الموجودة داخل الباتش
-          echo "=== Files inside dolphin-ps4.patch ===" > ${GITHUB_WORKSPACE}/extracted-xmb/patch-summary.txt
-          grep -E "^diff --git " patches/dolphin-ps4.patch >> ${GITHUB_WORKSPACE}/extracted-xmb/patch-summary.txt || true
-          
-          # نسخ ملف الباتش وسكريبتات البناء والـ port لتحليلها وربطها بـ DuckStation
-          cp patches/dolphin-ps4.patch ${GITHUB_WORKSPACE}/extracted-xmb/
-          cp -r scripts ${GITHUB_WORKSPACE}/extracted-xmb/
-          cp -r toolchain ${GITHUB_WORKSPACE}/extracted-xmb/
-          cp -r port ${GITHUB_WORKSPACE}/extracted-xmb/
-          
-          cat ${GITHUB_WORKSPACE}/extracted-xmb/patch-summary.txt
+          # عرض المجلدات التي تم نسخها بنجاح
+          ls -la ${GITHUB_WORKSPACE}/src/duckstation-ps4/ps4-support/
 
-      - name: 4. رفع ملفات الـ XMB المستخرجة لتحميلها
+      - name: 4. رفع الملفات كأرتيفاكت للتحميل
         uses: actions/upload-artifact@v4
         with:
-          name: DolphinPS4-XMB-Source-Code
-          path: ${GITHUB_WORKSPACE}/extracted-xmb/
+          name: PS4-Support-Files
+          path: ${GITHUB_WORKSPACE}/src/duckstation-ps4/ps4-support/
+    
