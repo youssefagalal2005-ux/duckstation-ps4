@@ -9,34 +9,42 @@ on:
       - '.github/workflows/ps4-build.yml'
 
 jobs:
-  build-duckstation-ps4:
+  configure-ps1-covers:
     runs-on: ubuntu-24.04
 
     steps:
-      - name: 1. سحب كود DuckStation والملفات المساعدة
+      - name: 1. سحب كود DuckStation وملفات الدعم
         uses: actions/checkout@v4
         with:
           submodules: recursive
 
-      - name: 2. سحب سكريبتات الدعم والـ Port الخاصة بالـ PS4
+      - name: 2. سحب مشروع DolphinPS4 لاستخراج أصول الواجهة (XMB)
         run: |
           git clone --depth=1 https://github.com/iHaiDeeZ/DolphinPS4.git ${GITHUB_WORKSPACE}/dolphin-ps4-ref
-          mkdir -p ${GITHUB_WORKSPACE}/ps4-build-env
-          cp -r ${GITHUB_WORKSPACE}/dolphin-ps4-ref/port ${GITHUB_WORKSPACE}/ps4-build-env/
-          cp -r ${GITHUB_WORKSPACE}/dolphin-ps4-ref/toolchain ${GITHUB_WORKSPACE}/ps4-build-env/
-          cp -r ${GITHUB_WORKSPACE}/dolphin-ps4-ref/scripts ${GITHUB_WORKSPACE}/ps4-build-env/
-          ls -la ${GITHUB_WORKSPACE}/ps4-build-env/
+          mkdir -p ${GITHUB_WORKSPACE}/src/duckstation-ps4/xmb-assets
+          cp -r ${GITHUB_WORKSPACE}/dolphin-ps4-ref/xmb/* ${GITHUB_WORKSPACE}/src/duckstation-ps4/xmb-assets/
 
-      - name: 3. إعداد بيئة ومترجم الـ PS4 (Clang & CMake)
+      - name: 3. تخصيص مسارات Covers ألعاب الـ PS1 حصرياً
         run: |
-          sudo apt-get update
-          sudo apt-get install -y cmake ninja-build clang lld llvm pkg-config wget tar python3
-          echo "Build environment tools installed successfully."
+          echo "Configuring Box Art / Cover downloader links for PlayStation 1 (PS1)..."
+          
+          # تعديل ملف الإعدادات الافتراضية لتوجيه جلب صور أغطية ألعاب PS1
+          CONFIG_FILE="${GITHUB_WORKSPACE}/src/duckstation-ps4/xmb-assets/ps4-defaults.ini"
+          
+          if [ -f "$CONFIG_FILE" ]; then
+            echo "Updating cover art URL for PS1 in ps4-defaults.ini..."
+            echo "CoverDatabaseURL = https://raw.githubusercontent.com/stenzek/duckstation/master/ee/covers/ps1/" >> "$CONFIG_FILE"
+          else
+            echo "Creating new ps4-defaults.ini with PS1 cover configurations..."
+            mkdir -p ${GITHUB_WORKSPACE}/src/duckstation-ps4/xmb-assets/
+            echo "[CoverArt]" > "$CONFIG_FILE"
+            echo "CoverDatabaseURL = https://raw.githubusercontent.com/stenzek/duckstation/master/ee/covers/ps1/" >> "$CONFIG_FILE"
+          fi
+          
+          cat "$CONFIG_FILE"
 
-      - name: 4. فحص هيكل ملفات البناء وبدء توليد الحزمة
-        run: |
-          echo "Preparing CMake configuration for DuckStation PS4 target..."
-          mkdir -p build-ps4
-          cd build-ps4
-          # سيتم ربط الإعدادات هنا مع ملفات الـ toolchain المستخرجة
-          echo "Environment is ready for building DuckStation cores."
+      - name: 4. رفع الملفات الجاهزة للتأكيد
+        uses: actions/upload-artifact@v4
+        with:
+          name: DuckStation-PS1-XMB-Ready
+          path: ${GITHUB_WORKSPACE}/src/duckstation-ps4/xmb-assets/
