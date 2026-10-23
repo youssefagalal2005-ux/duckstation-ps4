@@ -1,0 +1,36 @@
+name: Build DuckStation PS4 (XMB UI)
+
+on:
+  workflow_dispatch: # يتيح لك تشغيل البناء بضغطة زر متى شئت
+  push:
+    branches: [ master, main ]
+    paths:
+      - 'src/duckstation-ps4/**'
+      - '.github/workflows/ps4-build.yml'
+
+jobs:
+  build-ps4:
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: 1. سحب الكود المصدري للمحاكي
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: 2. تثبيت الأدوات الأساسية (CMake & Ninja & Clang)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake ninja-build clang lld llvm pkg-config wget tar
+
+      - name: 3. تحميل حزمة تطوير البلايستيشن 4 (OpenOrbis SDK)
+        run: |
+          mkdir -p ${GITHUB_WORKSPACE}/ps4-sdk
+          wget -q https://github.com/OpenOrbis/OpenOrbis-PS4-Toolchain/releases/download/v0.5.3/v0.5.3.tar.gz -O toolchain.tar.gz
+          tar -xzf toolchain.tar.gz -C ${GITHUB_WORKSPACE}/ps4-sdk
+          echo "OO_PS4_TOOLCHAIN=${GITHUB_WORKSPACE}/ps4-sdk" >> $GITHUB_ENV
+
+      - name: 4. فحص جاهزية بيئة البناء
+        run: |
+          echo "PS4 Toolchain Installed Successfully at: $OO_PS4_TOOLCHAIN"
+          ls -la $OO_PS4_TOOLCHAIN
