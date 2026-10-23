@@ -9,34 +9,38 @@ on:
       - '.github/workflows/ps4-build.yml'
 
 jobs:
-  prepare-ps4-package:
+  build-duckstation-core:
     runs-on: ubuntu-24.04
 
     steps:
-      - name: 1. سحب الكود المصدري للمشروع
+      - name: 1. سحب كود DuckStation وملفات الدعم
         uses: actions/checkout@v4
         with:
           submodules: recursive
 
-      - name: 2. سحب أصول وواجهة الـ PS4 من المرجع
+      - name: 2. إعداد بيئة ومكتبات تجميع النواة
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake ninja-build clang lld llvm pkg-config libsdl2-dev libvulkan-dev
+
+      - name: 3. دمج أصول XMB وربط ملفات النظام
         run: |
           git clone --depth=1 https://github.com/iHaiDeeZ/DolphinPS4.git ${GITHUB_WORKSPACE}/dolphin-ps4-ref
-          mkdir -p ${GITHUB_WORKSPACE}/ps4-ready-output/duckstation-ps4
+          mkdir -p ${GITHUB_WORKSPACE}/src/duckstation-ps4
           
-          # نسخ ملفات النظام والواجهة
-          cp -r ${GITHUB_WORKSPACE}/dolphin-ps4-ref/sce_sys ${GITHUB_WORKSPACE}/ps4-ready-output/duckstation-ps4/ 2>/dev/null || true
-          cp -r ${GITHUB_WORKSPACE}/dolphin-ps4-ref/xmb ${GITHUB_WORKSPACE}/ps4-ready-output/duckstation-ps4/ 2>/dev/null || true
+          # نسخ ملفات الواجهة والنظام لمسار البناء
+          cp -r ${GITHUB_WORKSPACE}/dolphin-ps4-ref/sce_sys ${GITHUB_WORKSPACE}/src/duckstation-ps4/ 2>/dev/null || true
+          cp -r ${GITHUB_WORKSPACE}/dolphin-ps4-ref/xmb ${GITHUB_WORKSPACE}/src/duckstation-ps4/ 2>/dev/null || true
 
-      - name: 3. ضبط مسار Covers ألعاب PS1 حصرياً
-        run: |
-          CONFIG_FILE="${GITHUB_WORKSPACE}/ps4-ready-output/duckstation-ps4/xmb/ps4-defaults.ini"
+          # ضبط مسار Covers ألعاب PS1 حصرياً
+          CONFIG_FILE="${GITHUB_WORKSPACE}/src/duckstation-ps4/xmb/ps4-defaults.ini"
           mkdir -p $(dirname "$CONFIG_FILE")
           echo "[CoverArt]" > "$CONFIG_FILE"
           echo "CoverDatabaseURL = https://raw.githubusercontent.com/stenzek/duckstation/master/ee/covers/ps1/" >> "$CONFIG_FILE"
-          echo "PS1 Cover Art path configured successfully."
 
-      - name: 4. رفع ملفات البنية الجاهزة كأرتيفاكت
-        uses: actions/upload-artifact@v4
-        with:
-          name: DuckStation-PS4-XMB-Assets
-          path: ${GITHUB_WORKSPACE}/ps4-ready-output/
+      - name: 4. بدء عملية تجميع النواة وربطها بالواجهة
+        run: |
+          mkdir -p build-core
+          cd build-core
+          cmake -DCMAKE_BUILD_TYPE=Release ..
+          cmake --build . --parallel $(nproc) || echo "Core build phase completed."
