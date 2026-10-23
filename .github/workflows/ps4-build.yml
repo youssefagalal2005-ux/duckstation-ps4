@@ -9,40 +9,36 @@ on:
       - '.github/workflows/ps4-build.yml'
 
 jobs:
-  build-ps4:
-    runs-on: ubuntu-22.04
+  extract-and-prepare:
+    runs-on: ubuntu-24.04
 
     steps:
-      - name: 1. سحب الكود المصدري للمحاكي
+      - name: 1. سحب الكود المصدري لمحاكي DuckStation
         uses: actions/checkout@v4
 
-      - name: 2. تثبيت الأدوات الأساسية (CMake & Ninja & Clang)
+      - name: 2. سحب مشروع DolphinPS4 لاستخراج الـ XMB وتعريفات Vulkan
         run: |
-          sudo apt-get update
-          sudo apt-get install -y cmake ninja-build clang lld llvm pkg-config wget curl git tar
+          git clone --depth=1 https://github.com/iHaiDeeZ/DolphinPS4.git ${GITHUB_WORKSPACE}/dolphin-ps4-ref
 
-      - name: 3. تحميل وتجهيز حزمة OpenOrbis SDK v0.5.3 (Latest)
+      - name: 3. استخراج ملفات كود واجهة الـ XMB من الباتش وتحليل هيكلها
         run: |
-          mkdir -p ${GITHUB_WORKSPACE}/ps4-sdk
+          mkdir -p ${GITHUB_WORKSPACE}/extracted-xmb
+          cd ${GITHUB_WORKSPACE}/dolphin-ps4-ref
           
-          # فحص الرابط المباشر أولاً، أو بناء حزمة v0.5.3 الأحدث مباشرة من المستودع الرسمي
-          if wget -q --spider https://github.com/OpenOrbis/OpenOrbis-PS4-Toolchain/releases/download/v0.5.3/v0.5.3.tar.gz; then
-            wget -q https://github.com/OpenOrbis/OpenOrbis-PS4-Toolchain/releases/download/v0.5.3/v0.5.3.tar.gz -O toolchain.tar.gz
-            tar -xzf toolchain.tar.gz -C ${GITHUB_WORKSPACE}/ps4-sdk
-          else
-            echo "Building OpenOrbis SDK v0.5.3 from latest official repository..."
-            wget -q https://github.com/OpenOrbis/OpenOrbis-PS4-Toolchain/releases/download/v0.5.2/v0.5.2.tar.gz -O base.tar.gz
-            tar -xzf base.tar.gz -C ${GITHUB_WORKSPACE}/ps4-sdk
-            
-            # سحب ملفات وتحديثات v0.5.3 الأحدث ودمجها فوق الحزمة
-            git clone --depth=1 https://github.com/OpenOrbis/OpenOrbis-PS4-Toolchain.git /tmp/openorbis-v053
-            cp -rf /tmp/openorbis-v053/include/* ${GITHUB_WORKSPACE}/ps4-sdk/include/ 2>/dev/null || true
-            cp -rf /tmp/openorbis-v053/cmake/* ${GITHUB_WORKSPACE}/ps4-sdk/cmake/ 2>/dev/null || true
-          fi
+          # عرض قائمة بجميع ملفات الكود الجديدة الموجودة داخل الباتش
+          echo "=== Files inside dolphin-ps4.patch ===" > ${GITHUB_WORKSPACE}/extracted-xmb/patch-summary.txt
+          grep -E "^diff --git " patches/dolphin-ps4.patch >> ${GITHUB_WORKSPACE}/extracted-xmb/patch-summary.txt || true
           
-          echo "OO_PS4_TOOLCHAIN=${GITHUB_WORKSPACE}/ps4-sdk" >> $GITHUB_ENV
+          # نسخ ملف الباتش وسكريبتات البناء والـ port لتحليلها وربطها بـ DuckStation
+          cp patches/dolphin-ps4.patch ${GITHUB_WORKSPACE}/extracted-xmb/
+          cp -r scripts ${GITHUB_WORKSPACE}/extracted-xmb/
+          cp -r toolchain ${GITHUB_WORKSPACE}/extracted-xmb/
+          cp -r port ${GITHUB_WORKSPACE}/extracted-xmb/
+          
+          cat ${GITHUB_WORKSPACE}/extracted-xmb/patch-summary.txt
 
-      - name: 4. فحص جاهزية بيئة البناء v0.5.3
-        run: |
-          echo "OpenOrbis SDK v0.5.3 Ready at: $OO_PS4_TOOLCHAIN"
-          ls -la $OO_PS4_TOOLCHAIN
+      - name: 4. رفع ملفات الـ XMB المستخرجة لتحميلها
+        uses: actions/upload-artifact@v4
+        with:
+          name: DolphinPS4-XMB-Source-Code
+          path: ${GITHUB_WORKSPACE}/extracted-xmb/
